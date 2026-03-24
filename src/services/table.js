@@ -1,10 +1,8 @@
 // ─────────────────────────────────────────────
 // TABLE SERVICE
 // Handles table read/replace operations for QC panel
-// PRD: prd/platform/n8n-workflows/utilities.md
-// ─────────────────────────────────────────────
 import { TABLE_ENDPOINTS } from '../config.js';
-import { getUserId } from './user.js';
+import { fetchWithAuth } from './api.js';
 
 const handleResponse = async (response) => {
   if (!response.ok) {
@@ -21,11 +19,9 @@ const handleResponse = async (response) => {
  * @returns {Promise<Object>} { headers: [], rows: [] }
  */
 export const readTable = async (table_name) => {
-  const user_id = getUserId();
   const url = new URL(TABLE_ENDPOINTS.READ);
-  url.searchParams.append('user_id', user_id);
   url.searchParams.append('table_name', table_name);
-  const response = await fetch(url.toString());
+  const response = await fetchWithAuth(url.toString());
   const data = await handleResponse(response);
 
   // API returns an array; take the first element
@@ -49,11 +45,10 @@ export const readTable = async (table_name) => {
  * @returns {Promise<Object>} { table_name, rows_saved, status }
  */
 export const replaceTable = async (table_name, headers, rows) => {
-  const user_id = getUserId();
-  const response = await fetch(TABLE_ENDPOINTS.REPLACE, {
+  const response = await fetchWithAuth(TABLE_ENDPOINTS.REPLACE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id, table_name, columns: headers, rows }),
+    body: JSON.stringify({ table_name, columns: headers, rows }),
   });
   return handleResponse(response);
 };
@@ -64,11 +59,10 @@ export const replaceTable = async (table_name, headers, rows) => {
  * @returns {Promise<Object>} { table_name, status }
  */
 export const deleteTable = async (table_name) => {
-  const user_id = getUserId();
-  const response = await fetch(TABLE_ENDPOINTS.DELETE, {
+  const response = await fetchWithAuth(TABLE_ENDPOINTS.DELETE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id, table_name }),
+    body: JSON.stringify({ table_name }),
   });
   return handleResponse(response);
 };
@@ -90,9 +84,7 @@ export const renameTable = async (oldName, newName, headers, rows) => {
  * @returns {Promise<Object>} { user_id, tables: [], count }
  */
 export const listTables = async () => {
-  const user_id = getUserId();
   const url = new URL(TABLE_ENDPOINTS.LIST);
-  url.searchParams.append('user_id', user_id);
-  const response = await fetch(url.toString());
+  const response = await fetchWithAuth(url.toString());
   return handleResponse(response);
 };

@@ -2,9 +2,8 @@
 // ORCHESTRATOR SERVICE
 // Handles all orchestrator API calls for MVP-1
 // PRD: prd/platform/orchestrator.md
-// ─────────────────────────────────────────────
 import { ORCHESTRATOR_ENDPOINTS } from '../config.js';
-import { getUserId } from './user.js';
+import { fetchWithAuth } from './api.js';
 
 const handleResponse = async (response) => {
   if (!response.ok) {
@@ -22,10 +21,9 @@ const handleResponse = async (response) => {
  * @returns {Promise<Object>} Run configuration with run_guid and nodes array.
  */
 export const startRun = async (trigger_mode, nodes, workflow_id) => {
-  const user_id = getUserId();
-  const body = { trigger_mode, nodes, workflow_id, user_id };
+  const body = { trigger_mode, nodes, workflow_id };
 
-  const response = await fetch(ORCHESTRATOR_ENDPOINTS.START, {
+  const response = await fetchWithAuth(ORCHESTRATOR_ENDPOINTS.START, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -40,7 +38,7 @@ export const startRun = async (trigger_mode, nodes, workflow_id) => {
  * @returns {Promise<Object>} Status response with status, current_node_index, etc.
  */
 export const pollStatus = async (run_guid, signal) => {
-  const response = await fetch(
+  const response = await fetchWithAuth(
     `${ORCHESTRATOR_ENDPOINTS.STATUS}?run_guid=${encodeURIComponent(run_guid)}`,
     { signal }
   );
@@ -53,7 +51,7 @@ export const pollStatus = async (run_guid, signal) => {
  * @returns {Promise<Object>} New state with status, current_node_index
  */
 export const advanceRun = async (run_guid) => {
-  const response = await fetch(ORCHESTRATOR_ENDPOINTS.ADVANCE, {
+  const response = await fetchWithAuth(ORCHESTRATOR_ENDPOINTS.ADVANCE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ run_guid }),
@@ -67,7 +65,7 @@ export const advanceRun = async (run_guid) => {
  * @returns {Promise<Object>} { run_guid, status: 'cancelled' }
  */
 export const cancelRun = async (run_guid) => {
-  const response = await fetch(ORCHESTRATOR_ENDPOINTS.CANCEL, {
+  const response = await fetchWithAuth(ORCHESTRATOR_ENDPOINTS.CANCEL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ run_guid }),
@@ -86,7 +84,7 @@ export const cancelRun = async (run_guid) => {
  * @returns {Promise<Object>} { ok: true }
  */
 export const nodeComplete = async (run_guid, node_index, output_table, rows_processed = 0, error = null) => {
-  const response = await fetch(ORCHESTRATOR_ENDPOINTS.NODE_COMPLETE, {
+  const response = await fetchWithAuth(ORCHESTRATOR_ENDPOINTS.NODE_COMPLETE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

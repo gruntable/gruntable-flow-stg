@@ -1,5 +1,6 @@
 import { useRef, useEffect } from "react";
 import { C, S } from "../../../platform/styles.jsx";
+import { fetchWithAuth } from "../../../services/api.js";
 
 function getCleanTableName(technicalName) {
   const match = technicalName?.match(/^[\w-]+_[a-z0-9]+_(.+)$/);
@@ -266,7 +267,7 @@ export default function RunTab({
       const currentNode = runConfig?.nodes?.[currentNodeIndex];
       if (!currentNode?.webhook_url) return;
       try {
-        const response = await fetch(currentNode.webhook_url, {
+        const response = await fetchWithAuth(currentNode.webhook_url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(currentNode.webhook_body),

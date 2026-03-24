@@ -14,6 +14,6 @@ export default defineConfig({
   }
 })
 
-// To switch environments, edit to:
-//   STG:  VITE_API_BASE_URL=https://n8n-stg.gruntable.com
-//   PROD: VITE_API_BASE_URL=https://grunts.gruntable-api.com
+// To switch n8n environments, edit .env:
+//   STG:  VITE_N8N_BASE_URL=https://n8n-stg.gruntable.com
+//   PROD: VITE_N8N_BASE_URL=https://grunts.gruntable-api.com
