@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { startRun, pollStatus, advanceRun, cancelRun } from "../../../services/orchestrator.js";
 import { convertNodesToOrchestratorFormat } from "../utils/workflow-metadata.js";
+import { fetchWithAuth } from "../../../services/api.js";
 
 const sanitizeTableName = (name) => name?.trim() || "";
 
@@ -326,7 +327,7 @@ export default function useOrchestrator({
 
     const triggerAutoNode = async () => {
       try {
-        const response = await fetch(currentNode.webhook_url, {
+        const response = await fetchWithAuth(currentNode.webhook_url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(currentNode.webhook_body),

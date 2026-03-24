@@ -1,17 +1,24 @@
 // ─────────────────────────────────────────────
-// N8N CONFIGURATION
-// Update N8N_BASE if the host changes.
+// BASE URL CONFIGURATION
+//
+// VITE_N8N_BASE_URL  — n8n webhook server (current primary backend).
+//                       Will be gradually replaced by FastAPI.
+// VITE_API_BASE_URL  — FastAPI server (new endpoints land here).
+//
 // n8n form paths are defined in nodes/catalogue.js and
 // must match imported workflows in /n8n/workflows.
 //
-// To switch environments, create/edit app/.env.local:
-//   STG:  VITE_API_BASE_URL=https://n8n-stg.gruntable.com
-//   PROD: VITE_API_BASE_URL=https://grunts.gruntable-api.com
-// To change the default fallback, set VITE_DEFAULT_API_BASE_URL.
+// To switch environments, create/edit .env.local:
+//   STG:  VITE_N8N_BASE_URL=https://n8n-stg.gruntable.com
+//   PROD: VITE_N8N_BASE_URL=https://grunts.gruntable-api.com
 // Then restart the dev server. .env.local is gitignored.
 // ─────────────────────────────────────────────
 
-export const N8N_BASE = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_DEFAULT_API_BASE_URL || "https://n8n-stg.gruntable.com";
+// n8n webhook server (will be gradually replaced by FastAPI)
+export const N8N_BASE = import.meta.env.VITE_N8N_BASE_URL || "https://n8n-stg.gruntable.com";
+
+// FastAPI server (new endpoints land here)
+export const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 // Orchestrator endpoints (PRD: prd/platform/orchestrator.md)
 export const ORCHESTRATOR_ENDPOINTS = {
