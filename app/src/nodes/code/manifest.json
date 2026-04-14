@@ -1,0 +1,35 @@
+{
+  "node_type": "code",
+  "version": "1.0.0",
+  "label": "Code",
+  "icon": "📝",
+  "category": "Transform",
+  "desc": "Execute custom JavaScript code with access to Gruntable tables and external API calls.",
+  "behavior": "basic_go",
+  "requires_file": false,
+  "requires_prompt": false,
+  "requires_table_input": false,
+  "max_input_tables": 5,
+  "table_output_mode": "optional",
+  "is_export": false,
+  "qc_mode": "pause_review",
+  "pauseForReview": true,
+  "has_custom_validation": true,
+  "defaults": {
+    "table_name": "Code Output"
+  },
+  "ui": {
+    "table_name_label": "Output Table Name",
+    "table_name_hint": "Name this table to store code output.",
+    "processing_label": "Processing..."
+  },
+  "n8n_workflows": [
+    {
+      "id": "code",
+      "label": "Code",
+      "filename": "n8n/pages/workflows/nodes/code/code.webhook.json",
+      "trigger_type": "webhook",
+      "trigger_path": "/webhook/code"
+    }
+  ]
+}

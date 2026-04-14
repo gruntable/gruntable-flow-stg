@@ -1,0 +1,49 @@
+{
+  "node_type": "ai_export",
+  "version": "1.0.0",
+  "label": "AI Export to JSON & XML",
+  "icon": "📤✨",
+  "category": "Export",
+  "desc": "Use AI to export a table to JSON or XML format. You provide a prompt describing the desired output structure.",
+  "behavior": "ai_export",
+  "requires_file": false,
+  "requires_prompt": true,
+  "requires_table_input": true,
+  "max_input_tables": 1,
+  "table_output_mode": "none",
+  "is_export": true,
+  "qc_mode": "export_downloaded",
+  "pauseForReview": true,
+  "defaults": {
+    "table_name": "",
+    "output_format": "json"
+  },
+  "ui": {
+    "prompt_label": "Export Prompt",
+    "prompt_placeholder": "e.g. Export as nested JSON with 'records' as root array",
+    "table_name_label": "Source Table Name",
+    "table_name_hint": "Enter the name of the table to export. Must match the output table name from the upstream node.",
+    "processing_label": "Generating export...",
+    "output_format_options": [
+      {
+        "value": "json",
+        "label": "JSON"
+      },
+      {
+        "value": "xml",
+        "label": "XML"
+      }
+    ],
+    "default_prompt_json": "Export the upstream table to nested JSON with this structure:\n{\n  \"metadata\": {\n    \"totalRecords\": \"<auto-calculated from table>\",\n    \"sourceTable\": \"<table name from Table Source>\",\n    \"exportedAt\": \"<current timestamp>\"\n  },\n  \"records\": [\n    {\n      \"id\": \"<value from id column>\",\n      \"name\": \"<value from name column>\",\n      \"amount\": \"<value from amount column>\",\n      \"details\": {\n        \"category\": \"<value from category column>\",\n        \"date\": \"<value from date column>\",\n        \"status\": \"<value from status column>\"\n      }\n    }\n  ]\n}\nKeep all original columns from the upstream table. Use appropriate data types for numbers and booleans.",
+    "default_prompt_xml": "Convert the upstream table to XML with this structure:\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<root>\n  <metadata>\n    <totalRecords>100</totalRecords>\n    <sourceTable>table_name</sourceTable>\n    <exportedAt>2026-03-08T10:00:00Z</exportedAt>\n  </metadata>\n  <records>\n    <record id=\"1\">\n      <name>Sample Name</name>\n      <amount>1000</amount>\n      <details>\n        <category>Category A</category>\n        <date>2026-01-15</date>\n        <status>active</status>\n      </details>\n    </record>\n  </records>\n</root>\nKeep all original columns from the upstream table as XML elements. Use attributes for key fields like id."
+  },
+  "n8n_workflows": [
+    {
+      "id": "ai-export",
+      "label": "AI Export",
+      "filename": "n8n/pages/workflows/nodes/ai-export/ai-export.webhook.json",
+      "trigger_type": "webhook",
+      "trigger_path": "/webhook/ai-export"
+    }
+  ]
+}

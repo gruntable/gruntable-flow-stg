@@ -1,0 +1,23 @@
+{
+  "node_type": "display_text",
+  "version": "1.0.0",
+  "label": "Display Text",
+  "icon": "📄",
+  "category": "Utilities",
+  "desc": "Display instructions or guidance to the user at this step in the workflow.",
+  "behavior": "text_display",
+  "requires_file": false,
+  "requires_prompt": false,
+  "requires_table_input": false,
+  "max_input_tables": 0,
+  "table_output_mode": "none",
+  "is_export": false,
+  "qc_mode": null,
+  "pauseForReview": false,
+  "defaults": {
+    "text": {
+      "content": "# Level 1 Heading (H1)\n## Level 2 Heading (H2)\n### Level 3 Heading (H3)\n\nThis is a paragraph with **bold text** and *italicized text*\n\n### Unordered Lists\n*   Unordered list item 1\n*   Unordered list item 2\n\n### Links\nYou can add clickable links like [Google Docs](https://docs.google.com) in your text."
+    }
+  },
+  "ui": {}
+}
