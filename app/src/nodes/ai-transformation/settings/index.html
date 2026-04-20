@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; padding: 20px 20px 8px 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; color: #374151; }
+
+
+    /* Section bars */
+    .section-bar { font-size: 11px; font-weight: 700; color: #111; letter-spacing: 0.3px; padding: 8px 12px; margin: 24px -20px 12px -20px; background: #f8f8f8; border-top: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; gap: 6px; }
+    .section-bar.first { margin-top: 12px; }
+    .section-bar.green  { border-left: 3px solid #22c55e; }
+    .section-bar.orange { border-left: 3px solid #f59e0b; }
+    .section-bar.purple { border-left: 3px solid #8b5cf6; }
+
+    /* Fields */
+    .field { margin-bottom: 12px; }
+    .label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+    .required { color: #ef4444; font-size: 10px; font-weight: 700; }
+    select, input[type="text"], textarea { width: 100%; padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 13px; font-family: inherit; background: white; color: #374151; outline: none; }
+    select:focus, input[type="text"]:focus, textarea:focus { border-color: #6b7280; }
+    textarea { resize: vertical; min-height: 120px; max-height: 500px; overflow-y: auto; line-height: 1.5; }
+    .hint { font-size: 11px; color: #9ca3af; margin-top: 4px; line-height: 1.5; }
+    .error { font-size: 11px; color: #ef4444; margin-top: 4px; }
+
+    /* Table Source */
+    .table-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .table-row select { flex: 1; }
+    .remove-btn { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 16px; padding: 4px 8px; flex-shrink: 0; line-height: 1; }
+    .add-input-btn { background: none; border: 1px dashed #ccc; border-radius: 4px; padding: 4px 12px; font-size: 12px; cursor: pointer; color: #666; margin-top: 4px; }
+    select.empty-select { color: #9ca3af; }
+    select option { color: #374151; }
+    select option[value=""] { color: #9ca3af; }
+
+    /* Table Output */
+    .radio-group { display: flex; flex-direction: column; gap: 8px; padding: 8px 0; }
+    .radio-label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .radio-label input[type="radio"] { margin: 0; }
+    .radio-text { font-weight: 500; font-size: 12px; }
+    .radio-sub { color: #9ca3af; font-size: 11px; margin-left: 4px; }
+
+    /* Toggle */
+    .toggle-row { display: flex; align-items: center; gap: 6px; margin-top: 12px; cursor: pointer; }
+    .toggle-label { font-size: 12px; color: #374151; }
+
+    /* Combobox */
+    .combobox-wrap { position: relative; display: flex; }
+    .combobox-wrap input[type="text"] { flex: 1; }
+    .combobox-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 4px 4px; max-height: 160px; overflow-y: auto; z-index: 100; list-style: none; margin: 0; padding: 0; display: none; }
+    .combobox-list.open { display: block; }
+    .combobox-list li { padding: 6px 10px; cursor: pointer; font-size: 13px; color: #374151; display: flex; align-items: center; }
+    .combobox-list li:hover, .combobox-list li.active { background: #f3f4f6; }
+    .combobox-list li.empty { color: #9ca3af; font-style: italic; cursor: default; }
+    .combo-delete { margin-left: auto; padding: 0 2px; background: none; border: none; cursor: pointer; color: #ef4444; line-height: 1; flex-shrink: 0; display: flex; align-items: center; }
+    .combo-delete:hover { color: #b91c1c; }
+    .combobox-list li.add-new { color: #3b82f6; font-weight: 500; }
+    .combobox-list li.add-new:hover { background: #eff6ff; }
+  </style>
+</head>
+<body>
+
+
+  <!-- TABLE SOURCE -->
+  <div class="section-bar green first">📊 Table Source <span class="required" style="font-size:10px; margin-left:4px;">REQUIRED</span></div>
+  <div id="table-source-container"></div>
+  <button class="add-input-btn" id="add-input-btn" onclick="addTableInput()">+ Add Input</button>
+  <div id="source-error" class="error" style="display:none; margin-top:4px;">At least one input table is required before running</div>
+
+  <!-- USER FORM -->
+  <div class="section-bar orange">📁 User Form</div>
+
+  <div class="field">
+    <div class="label"><span id="prompt-label">Transformation Prompt</span> <span class="required">required</span></div>
+    <textarea id="prompt" placeholder="e.g. Normalize all dates to YYYY-MM-DD, remove duplicate rows"></textarea>
+    <div id="prompt-error" class="error" style="display:none">A prompt is required before this node can run.</div>
+  </div>
+
+  <div class="label" style="margin-top: 24px;">Pause after step run</div>
+  <label class="toggle-row">
+    <input type="checkbox" id="pause-review" checked onchange="onPauseChange(this)">
+    <span id="pause-label" class="toggle-label">Pause to review result before running the next step</span>
+  </label>
+  <div class="hint">When enabled, pauses after this step to allow review before continuing to the next step.</div>
+
+  <!-- TABLE OUTPUT -->
+  <div class="section-bar purple">📤 Table Output</div>
+
+  <div class="field">
+    <div class="label">Table name <span class="required">required</span></div>
+    <div class="combobox-wrap" id="table-name-wrap">
+      <input type="text" id="table-name" placeholder="e.g. AI Transformation Output" autocomplete="off">
+      <ul class="combobox-list" id="table-name-list"></ul>
+    </div>
+    <div id="table-name-error" class="error" style="display:none">Output table name is required before running</div>
+    <div class="hint">Type a new name or select from existing tables (case-insensitive)</div>
+  </div>
+
+  <div class="field">
+    <div class="label">If table exists <span class="required">required</span></div>
+    <div class="radio-group">
+      <label class="radio-label">
+        <input type="radio" name="conflict-mode" value="overwrite" onchange="onConflictChange('overwrite')">
+        <span class="radio-text">Overwrite</span><span class="radio-sub">(replace all data)</span>
+      </label>
+      <label class="radio-label">
+        <input type="radio" name="conflict-mode" value="append" onchange="onConflictChange('append')">
+        <span class="radio-text">Append</span><span class="radio-sub">(add rows)</span>
+      </label>
+    </div>
+    <div id="conflict-mode-error" class="error" style="display:none">Select "Overwrite" or "Append" before running</div>
+  </div>
+  <div class="hint" style="margin-bottom:8px">Name this table to reference it in downstream nodes.</div>
+
+  <script>
+    var manifest = {};
+    var allTables = [];
+    var sourceTables = [''];
+    var maxInputTables = 5;
+    var pauseForReview = true;
+
+
+
+    // ── Table Source ──
+    function renderTableSource() {
+      var container = document.getElementById('table-source-container');
+      container.innerHTML = sourceTables.map(function(val, idx) {
+        var opts = '<option value="">Select input table</option>' + allTables.map(function(t) {
+          return '<option value="' + t.replace(/"/g, '&quot;') + '"' + (t === val ? ' selected' : '') + '>' + t + '</option>';
+        }).join('');
+        var removeBtn = sourceTables.length > 1
+          ? '<button class="remove-btn" onclick="removeTableInput(' + idx + ')" title="Remove">✕</button>'
+          : '';
+        return '<div class="table-row"><select class="' + (val ? '' : 'empty-select') + '" onchange="onSourceChange(' + idx + ', this.value)">' + opts + '</select>' + removeBtn + '</div>';
+      }).join('');
+
+      var hasAny = sourceTables.some(function(t) { return t && t.trim(); });
+      document.getElementById('source-error').style.display = !hasAny ? '' : 'none';
+      document.getElementById('add-input-btn').style.display = sourceTables.length < maxInputTables ? '' : 'none';
+    }
+
+    function onSourceChange(idx, val) {
+      sourceTables[idx] = val;
+      var selects = document.querySelectorAll('#table-source-container select');
+      if (selects[idx]) selects[idx].className = val ? '' : 'empty-select';
+      var hasAny = sourceTables.some(function(t) { return t && t.trim(); });
+      document.getElementById('source-error').style.display = !hasAny ? '' : 'none';
+      sendChange({ sourceTables: sourceTables.slice() });
+    }
+
+    function addTableInput() {
+      if (sourceTables.length >= maxInputTables) return;
+      sourceTables.push('');
+      renderTableSource();
+    }
+
+    function removeTableInput(idx) {
+      sourceTables.splice(idx, 1);
+      renderTableSource();
+      sendChange({ sourceTables: sourceTables.slice() });
+    }
+
+    // ── User Form ──
+    document.getElementById('prompt').addEventListener('blur', function(e) {
+      var val = e.target.value;
+      document.getElementById('prompt-error').style.display = (!val || !val.trim()) ? '' : 'none';
+      sendChange({ prompt: val });
+    });
+    document.getElementById('prompt').addEventListener('input', function(e) {
+      document.getElementById('prompt-error').style.display = (!e.target.value || !e.target.value.trim()) ? '' : 'none';
+    });
+
+    function onPauseChange(el) {
+      pauseForReview = el.checked;
+      sendChange({ settings: { processing: { pauseForReview: pauseForReview } } });
+    }
+
+    // ── Table Output ──
+    function onConflictChange(mode) {
+      document.getElementById('conflict-mode-error').style.display = 'none';
+      sendChange({ conflictMode: mode });
+    }
+
+    // ── Table Name Combobox ──
+    var comboOpen = false;
+
+    function comboOpen_() {
+      comboOpen = true;
+      window.parent.postMessage({ type: 'requestData', resource: 'tables', requestId: 'combo' }, '*');
+      comboRender(document.getElementById('table-name').value);
+      document.getElementById('table-name-list').classList.add('open');
+    }
+    function comboClose() {
+      if (!comboOpen) return;
+      comboOpen = false;
+      document.getElementById('table-name-list').classList.remove('open');
+    }
+    function comboRender(filter) {
+      var list = document.getElementById('table-name-list');
+      var lower = (filter || '').toLowerCase().trim();
+      var filtered = lower ? allTables.filter(function(t) { return t.toLowerCase().indexOf(lower) !== -1; }) : allTables;
+      var trimmed = (filter || '').trim();
+      var exactMatch = trimmed && allTables.some(function(t) { return t.toLowerCase() === trimmed.toLowerCase(); });
+      var html = '';
+      if (trimmed && !exactMatch) {
+        var s = trimmed.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+        html += '<li class="add-new" data-value="' + s + '">+ Add &ldquo;' + s + '&rdquo;</li>';
+      }
+      if (filtered.length > 0) {
+        html += filtered.map(function(t) {
+            var safe = t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+            return '<li data-value="' + safe + '"><span>' + safe + '</span>'
+              + '<button class="combo-delete" data-value="' + safe + '" tabindex="-1" title="Delete table">'
+              + '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+              + '<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>'
+              + '</svg></button></li>';
+          }).join('');
+      } else if (!trimmed) {
+        html = '<li class="empty">No existing tables</li>';
+      }
+      list.innerHTML = html;
+    }
+    function comboSelect(val) {
+      document.getElementById('table-name').value = val;
+      document.getElementById('table-name-error').style.display = val ? 'none' : '';
+      sendChange({ tableName: val });
+      comboClose();
+    }
+
+    document.getElementById('table-name').addEventListener('focus', function() { comboOpen_(); });
+    document.getElementById('table-name').addEventListener('input', function(e) {
+      if (!comboOpen) comboOpen_();
+      comboRender(e.target.value);
+    });
+    document.getElementById('table-name').addEventListener('blur', function() {
+      setTimeout(function() {
+        if (!comboOpen) return;
+        var val = document.getElementById('table-name').value.trim();
+        document.getElementById('table-name-error').style.display = !val ? '' : 'none';
+        sendChange({ tableName: val });
+        comboClose();
+      }, 150);
+    });
+    document.getElementById('table-name-list').addEventListener('mousedown', function(e) {
+      var btn = e.target.closest('.combo-delete');
+      if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.parent.postMessage({ type: 'deleteTable', tableName: btn.dataset.value }, '*');
+        return;
+      }
+      var li = e.target.closest('li');
+      if (!li || li.classList.contains('empty')) return;
+      e.preventDefault();
+      comboSelect(li.dataset.value);
+    });
+    document.addEventListener('click', function(e) {
+      if (!comboOpen) return;
+      if (!document.getElementById('table-name-wrap').contains(e.target)) {
+        var val = document.getElementById('table-name').value.trim();
+        document.getElementById('table-name-error').style.display = !val ? '' : 'none';
+        sendChange({ tableName: val });
+        comboClose();
+      }
+    });
+
+    // ── Init / StateUpdate ──
+    function applyState(data, isInit) {
+      if (isInit) {
+        manifest = data.manifest || {};
+        maxInputTables = manifest.max_input_tables || 5;
+        var ui = manifest.ui || {};
+        if (ui.prompt_label) document.getElementById('prompt-label').textContent = ui.prompt_label;
+        if (ui.prompt_placeholder) document.getElementById('prompt').placeholder = ui.prompt_placeholder;
+      }
+
+      // Source tables
+      var incoming = data.sourceTables || [];
+      sourceTables = incoming.length > 0 ? incoming.slice() : [''];
+      allTables = data.allTables || [];
+      renderTableSource();
+
+      // Prompt
+      var promptEl = document.getElementById('prompt');
+      if (isInit || document.activeElement !== promptEl) {
+        promptEl.value = data.prompt || '';
+        document.getElementById('prompt-error').style.display = (!data.prompt || !data.prompt.trim()) ? '' : 'none';
+      }
+
+      // Pause
+      var p = (data.settings || {}).processing || {};
+      pauseForReview = p.pauseForReview !== false;
+      document.getElementById('pause-review').checked = pauseForReview;
+
+      // Table name
+      var tableNameEl = document.getElementById('table-name');
+      if (isInit || (document.activeElement !== tableNameEl && !comboOpen)) {
+        tableNameEl.value = data.tableName || '';
+        document.getElementById('table-name-error').style.display = !data.tableName ? '' : 'none';
+      }
+
+      // Conflict mode
+      if (data.conflictMode) {
+        document.querySelectorAll('[name="conflict-mode"]').forEach(function(r) {
+          r.checked = r.value === data.conflictMode;
+        });
+        document.getElementById('conflict-mode-error').style.display = 'none';
+      }
+    }
+
+    window.addEventListener('message', function(e) {
+      if (e.data.type === 'init') { currentNodeId = e.data.nodeId; applyState(e.data, true); window.parent.postMessage({ type: 'requestData', resource: 'tables', requestId: 'source' }, '*'); notifyResize(); }
+      if (e.data.type === 'stateUpdate') { applyState(e.data, false); notifyResize(); }
+      if (e.data.type === 'dataResponse' && e.data.resource === 'tables') {
+        allTables = e.data.data || [];
+        renderTableSource();
+        if (comboOpen) { comboRender(document.getElementById('table-name').value); }
+      }
+    });
+
+    var currentNodeId = null;
+    function sendChange(patch) {
+      window.parent.postMessage({ type: 'settingsChange', patch: Object.assign({ nodeId: currentNodeId }, patch) }, '*');
+    }
+
+    notifyResize.lastHeight = 0;
+    function notifyResize() {
+      var h = document.body.offsetHeight;
+      if (h === notifyResize.lastHeight) return;
+      notifyResize.lastHeight = h;
+      window.parent.postMessage({ type: 'resize', height: h }, '*');
+    }
+
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(notifyResize).observe(document.body);
+    }
+    notifyResize();
+  </script>
+</body>
+</html>

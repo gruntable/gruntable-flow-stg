@@ -1,0 +1,34 @@
+{
+  "node_type": "export_excel",
+  "version": "1.0.0",
+  "label": "Export to Excel",
+  "icon": "📤",
+  "category": "Export",
+  "desc": "Export a table to a .xlsx file.",
+  "behavior": "basic_export",
+  "requires_file": false,
+  "requires_prompt": false,
+  "requires_table_input": true,
+  "max_input_tables": 1,
+  "table_output_mode": "none",
+  "is_export": true,
+  "qc_mode": "export_downloaded",
+  "pauseForReview": true,
+  "defaults": {
+    "table_name": ""
+  },
+  "ui": {
+    "table_name_label": "Source Table Name",
+    "table_name_hint": "Enter the name of the table to export. Must match the output table name from the upstream node.",
+    "processing_label": "Generating export..."
+  },
+  "n8n_workflows": [
+    {
+      "id": "export-excel",
+      "label": "Export to Excel",
+      "filename": "n8n/pages/workflows/nodes/export-excel/export-excel.webhook.json",
+      "trigger_type": "webhook",
+      "trigger_path": "/webhook/export-excel"
+    }
+  ]
+}

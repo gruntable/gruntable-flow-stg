@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; padding: 20px 20px 8px 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; color: #374151; }
+
+
+    /* Section bars */
+    .section-bar { font-size: 11px; font-weight: 700; color: #111; letter-spacing: 0.3px; padding: 8px 12px; margin: 24px -20px 12px -20px; background: #f8f8f8; border-top: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; gap: 6px; }
+    .section-bar.first { margin-top: 12px; }
+    .section-bar.green  { border-left: 3px solid #22c55e; }
+    .section-bar.orange { border-left: 3px solid #f59e0b; }
+    .section-bar.purple { border-left: 3px solid #8b5cf6; }
+
+    /* Fields */
+    .field { margin-bottom: 12px; }
+    .label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+    .hint { font-size: 11px; color: #9ca3af; margin-top: 6px; line-height: 1.5; }
+    .error { font-size: 11px; color: #ef4444; margin-top: 4px; line-height: 1.5; }
+    .warning { font-size: 11px; color: #d97706; margin-top: 8px; padding: 8px 12px; background: #fffbeb; border-radius: 4px; border: 1px solid #fcd34d; line-height: 1.5; }
+
+    /* Table Source */
+    .table-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .table-row select { flex: 1; width: 100%; padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 13px; font-family: inherit; background: white; color: #374151; outline: none; }
+    .table-row select:focus { border-color: #6b7280; }
+    .table-row select.empty-select { color: #9ca3af; }
+    .table-row select option { color: #374151; }
+    .table-row select option[value=""] { color: #9ca3af; }
+    .remove-btn { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 16px; padding: 4px 8px; flex-shrink: 0; line-height: 1; }
+    .add-input-btn { background: none; border: 1px dashed #ccc; border-radius: 4px; padding: 4px 12px; font-size: 12px; cursor: pointer; color: #666; margin-top: 4px; }
+
+    /* Table Output */
+    input[type="text"] { width: 100%; padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 13px; font-family: inherit; background: white; color: #374151; outline: none; }
+    input[type="text"]:focus { border-color: #6b7280; }
+    .radio-group { display: flex; flex-direction: column; gap: 8px; padding: 8px 0; }
+    .radio-label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .radio-label input[type="radio"] { margin: 0; }
+    .radio-text { font-weight: 500; font-size: 12px; }
+    .radio-sub { color: #9ca3af; font-size: 11px; margin-left: 4px; }
+
+    /* Toggle */
+    .toggle-row { display: flex; align-items: center; gap: 6px; margin-top: 12px; cursor: pointer; }
+    .toggle-label { font-size: 12px; color: #374151; }
+
+    /* Combobox */
+    .combobox-wrap { position: relative; display: flex; }
+    .combobox-wrap input[type="text"] { flex: 1; }
+    .combobox-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 4px 4px; max-height: 160px; overflow-y: auto; z-index: 100; list-style: none; margin: 0; padding: 0; display: none; }
+    .combobox-list.open { display: block; }
+    .combobox-list li { padding: 6px 10px; cursor: pointer; font-size: 13px; color: #374151; display: flex; align-items: center; }
+    .combobox-list li:hover, .combobox-list li.active { background: #f3f4f6; }
+    .combobox-list li.empty { color: #9ca3af; font-style: italic; cursor: default; }
+    .combo-delete { margin-left: auto; padding: 0 2px; background: none; border: none; cursor: pointer; color: #ef4444; line-height: 1; flex-shrink: 0; display: flex; align-items: center; }
+    .combo-delete:hover { color: #b91c1c; }
+    .combobox-list li.add-new { color: #3b82f6; font-weight: 500; }
+    .combobox-list li.add-new:hover { background: #eff6ff; }
+
+    /* CodeMirror overrides */
+    .CodeMirror { height: 300px; max-height: 500px; resize: vertical; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; overflow: hidden; }
+    .CodeMirror-scroll { height: 100%; max-height: 500px; overflow-y: auto; box-sizing: border-box; }
+
+    /* Docs popup */
+    .docs-toggle { font-size: 11px; color: #3b82f6; background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 3px; font-weight: 600; }
+    .docs-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999; display: none; align-items: center; justify-content: center; }
+    .docs-modal.open { display: flex; }
+    .docs-modal-backdrop { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); }
+    .docs-modal-content { position: relative; background: white; border-radius: 12px; max-width: 900px; width: 92%; max-height: 85vh; overflow: hidden; box-shadow: 0 25px 80px rgba(0,0,0,0.5); display: flex; flex-direction: column; }
+    .docs-modal-close { position: absolute; top: 10px; right: 12px; background: rgba(0,0,0,0.06); border: none; font-size: 20px; color: #6b7280; cursor: pointer; padding: 4px 10px; border-radius: 6px; line-height: 1; z-index: 1; }
+    .docs-modal-close:hover { background: rgba(0,0,0,0.12); color: #374151; }
+    .docs-header { padding: 20px 24px 16px 24px; border-bottom: 1px solid #e5e7eb; background: #f8fafc; flex-shrink: 0; }
+    .docs-title { font-size: 16px; font-weight: 700; color: #111; margin-bottom: 4px; }
+    .docs-subtitle { font-size: 12px; color: #6b7280; line-height: 1.5; }
+    .docs-code-wrapper { position: relative; flex: 1; min-height: 0; overflow-y: auto; }
+    .docs-copy-btn { position: absolute; top: 12px; right: 12px; display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.1); color: #94a3b8; border: 1px solid rgba(255,255,255,0.15); padding: 5px 10px; border-radius: 5px; font-size: 11px; font-weight: 500; cursor: pointer; }
+    .docs-copy-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+    .docs-copy-btn.copied { background: #22c55e; border-color: #22c55e; color: white; }
+    .docs-code-block { margin: 0; padding: 20px 24px; background: #1e293b; color: #e2e8f0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; }
+
+    /* Examples */
+    .examples-toggle { font-size: 12px; color: #3b82f6; background: none; border: none; cursor: pointer; padding: 4px 8px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+    .examples-list { display: none; margin-top: 8px; }
+    .examples-list.open { display: flex; flex-direction: column; gap: 8px; }
+    .example-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; background: #fafafa; }
+    .example-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .example-card-title { font-weight: 600; font-size: 12px; color: #374151; }
+    .example-card-desc { font-size: 11px; color: #6b7280; line-height: 1.4; }
+    .use-btn { font-size: 11px; color: #3b82f6; background: none; border: 1px solid #3b82f6; border-radius: 4px; cursor: pointer; padding: 2px 8px; white-space: nowrap; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+
+  <!-- EXAMPLES -->
+  <div class="section-bar first" style="border-left-color: #3b82f6;">📋 Examples <button class="examples-toggle" onclick="toggleExamples()" style="margin-left: auto;"><span id="examples-arrow">▼</span></button></div>
+  <div style="margin-bottom: 12px;">
+    <div id="examples-list" class="examples-list">
+      <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; font-size: 11px; color: #1e40af; line-height: 1.5;">
+        <strong>Note:</strong> Examples 2, 4, and 5 require tables as input. You can either run from Example 1 sequentially, or 
+        <button id="create-tables-btn" onclick="createSampleTables()" style="background: #3b82f6; color: white; border: none; border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; font-weight: 600;">Create Sample Tables</button>
+        <span id="create-tables-loading" style="display:none; margin-left: 8px;">
+          <span style="display: inline-block; animation: spin 1s linear infinite;">⟳</span> Creating tables...
+        </span>
+        to set up all tables at once.
+      </div>
+      <div class="example-card">
+        <div class="example-card-header">
+          <span class="example-card-title">1. Fetch Users → "Users Data"</span>
+          <button class="use-btn" onclick="loadExample(1)">Use this</button>
+        </div>
+        <div class="example-card-desc">GET /api/users → outputs "Users Data" table</div>
+      </div>
+      <div class="example-card">
+        <div class="example-card-header">
+          <span class="example-card-title">2. Create Order (status only)</span>
+          <button class="use-btn" onclick="loadExample(2)">Use this</button>
+        </div>
+        <div class="example-card-desc">PUT /api/orders using user_id from "Users Data" → $node_response status only</div>
+      </div>
+      <div class="example-card">
+        <div class="example-card-header">
+          <span class="example-card-title">3. Fetch Orders → "Orders Data"</span>
+          <button class="use-btn" onclick="loadExample(3)">Use this</button>
+        </div>
+        <div class="example-card-desc">GET /api/orders → outputs "Orders Data" table</div>
+      </div>
+      <div class="example-card">
+        <div class="example-card-header">
+          <span class="example-card-title">4. Join Orders + Users</span>
+          <button class="use-btn" onclick="loadExample(4)">Use this</button>
+        </div>
+        <div class="example-card-desc">JOIN "Orders Data" + "Users Data" → "Orders with Users"</div>
+      </div>
+      <div class="example-card">
+        <div class="example-card-header">
+          <span class="example-card-title">5. Aggregate by Status</span>
+          <button class="use-btn" onclick="loadExample(5)">Use this</button>
+        </div>
+        <div class="example-card-desc">GROUP "Orders with Users" by status → "Sales Summary"</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLE SOURCE (optional) -->
+  <div class="section-bar green">📊 Table Source</div>
+  <div id="table-source-container"></div>
+  <button class="add-input-btn" id="add-input-btn" onclick="addTableInput()">+ Add Input</button>
+
+  <!-- USER FORM -->
+  <div class="section-bar orange">📁 User Form</div>
+
+  <div class="field">
+    <div class="label">
+      JavaScript Code
+      <button class="docs-toggle" onclick="showDocs()">[?]</button>
+    </div>
+    <div id="editor-container"></div>
+    <div id="table-ref-errors" class="error" style="display:none"></div>
+    <div class="hint">
+      Use <code>$table('Name')</code> to access tables.
+      Return <code>$table</code> for output, <code>$node_response</code> for Run Tab display.
+    </div>
+  </div>
+
+  <div class="label" style="margin-top: 24px;">Pause after step run</div>
+  <label class="toggle-row">
+    <input type="checkbox" id="pause-review" checked onchange="onPauseChange(this)">
+    <span id="pause-label" class="toggle-label">Pause to review result before running the next step</span>
+  </label>
+  <div class="hint">When enabled, pauses after this step to allow review before continuing to the next step.</div>
+
+  <!-- TABLE OUTPUT -->
+  <div class="section-bar purple">📤 Table Output</div>
+
+  <!-- Docs Modal Popup -->
+  <div id="docs-modal" class="docs-modal" onclick="if(event.target===this)closeDocs()">
+    <div class="docs-modal-backdrop"></div>
+    <div class="docs-modal-content">
+      <button class="docs-modal-close" onclick="closeDocs()">×</button>
+      <div class="docs-header">
+        <div class="docs-title">JavaScript Code Reference</div>
+        <div class="docs-subtitle">Copy the reference below and paste it to an AI to help generate code for this node</div>
+      </div>
+      <div class="docs-code-wrapper">
+        <button class="docs-copy-btn" onclick="copyDocs()">
+          <svg id="copy-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          <span id="copy-label">Copy</span>
+        </button>
+      <pre class="docs-code-block" id="docs-code-content">```markdown
+# Gruntable Code Node Reference
+
+## Overview
+The Code node executes JavaScript with access to Gruntable tables and external APIs.
+Add tables in **Table Source** above, then reference them with \`$table('Name')\`.
+
+## API Reference
+
+### $table('TableName')
+Access a table configured in Table Source.
+- **Input:** Table name (case-sensitive)
+- **Returns:** \`{ columns: string[], rows: Record&lt;string,any&gt;[] }\` or \`null\` if not found
+
+### Return Values
+Your code MUST return an object with at least one of these:
+
+#### $table — Write to Table Output
+\`\`\`javascript
+return {
+  $table: {
+    columns: ['Column1', 'Column2'],
+    rows: [
+      { Column1: 'value1', Column2: 'value2' },
+      { Column1: 'value3', Column2: 'value4' }
+    ]
+  }
+};
+\`\`\`
+
+#### $node_response — Display in Run Tab
+\`\`\`javascript
+return {
+  $node_response: {
+    status: 'ok',
+    message: 'Processed 42 rows',
+    data: { any: 'json', structure: 'here' }
+  }
+};
+\`\`\`
+
+#### Combined Output
+\`\`\`javascript
+return {
+  $table: { columns: [...], rows: [...] },
+  $node_response: { status: 'ok', processed: count }
+};
+\`\`\`
+
+## Rules
+- Use \`async/await\` for \`fetch()\` calls
+- Table names in \`$table()\` are **case-sensitive**
+- Maximum **5 input tables**
+- Table output only saves if you return \`$table\`
+
+## Examples
+
+### Example 1: Filter and Transform Table Rows
+\`\`\`javascript
+// Get source table
+const transactions = $table('BCA Transactions');
+if (!transactions) return { $node_response: { error: 'Table not found' } };
+
+// Filter rows where Debit > 0
+const filtered = transactions.rows.filter(row => row.Debit !== '');
+
+// Transform data
+const outputRows = filtered.map(row => ({
+  date: row.Tgl,
+  description: row.Keterangan,
+  amount: parseFloat(row.Debit.replace(/,/g, '')) || 0,
+  type: 'debit'
+}));
+
+return {
+  $table: {
+    columns: ['date', 'description', 'amount', 'type'],
+    rows: outputRows
+  },
+  $node_response: {
+    status: 'ok',
+    processed: outputRows.length
+  }
+};
+\`\`\`
+
+### Example 2: HTTP Request with Table Data
+\`\`\`javascript
+const response = await fetch('https://fake-json-api.mock.beeceptor.com/users', {
+  method: 'GET',
+  headers: {
+    'Accept': 'application/json'
+  }
+});
+
+const result = await response.json();
+const users = Array.isArray(result) ? result : [];
+
+return {
+  $table: {
+    columns: ['id', 'name', 'username', 'email', 'company', 'address', 'phone', 'country'],
+    rows: users.map(u => ({
+      id: u.id,
+      name: u.name,
+      username: u.username,
+      email: u.email,
+      company: u.company,
+      address: u.address,
+      phone: u.phone,
+      country: u.country
+    }))
+  },
+  $node_response: {
+    status: response.ok ? 'ok' : 'error',
+    userCount: users.length
+  }
+};
+\`\`\`
+
+### Example 3: Aggregate and Summarize
+\`\`\`javascript
+const sales = $table('Sales Data');
+if (!sales) return { $node_response: { error: 'Table not found' } };
+
+const summary = sales.rows.reduce((acc, row) => {
+  const category = row.Category || 'Unknown';
+  acc[category] = (acc[category] || 0) + parseFloat(row.Amount || 0);
+  return acc;
+}, {});
+
+const outputRows = Object.entries(summary).map(([category, total]) => ({
+  category,
+  total_sales: total
+}));
+
+return {
+  $table: {
+    columns: ['category', 'total_sales'],
+    rows: outputRows
+  },
+  $node_response: {
+    status: 'ok',
+    categories: outputRows.length
+  }
+};
+\`\`\`
+
+### Example 4: Join Two Tables
+\`\`\`javascript
+const customers = $table('Customers');
+const orders = $table('Orders');
+if (!customers || !orders) return { $node_response: { error: 'Tables not found' } };
+
+const customerMap = new Map(customers.rows.map(c => [c.id, c]));
+const outputRows = orders.rows.map(order => {
+  const customer = customerMap.get(order.customer_id) || {};
+  return {
+    order_id: order.id,
+    customer_name: customer.name || 'Unknown',
+    amount: order.amount
+  };
+});
+
+return {
+  $table: {
+    columns: ['order_id', 'customer_name', 'amount'],
+    rows: outputRows
+  },
+  $node_response: { status: 'ok', joined: outputRows.length }
+};
+\`\`\`
+
+### Example 5: No Table Output (API Only)
+\`\`\`javascript
+const data = $table('Input Data');
+if (!data) return { $node_response: { error: 'Table not found' } };
+
+await fetch('https://api.example.com/webhook', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ rows: data.rows })
+});
+
+return {
+  $node_response: { status: 'ok', sent: data.rows.length }
+};
+\`\`\`
+```
+      </pre>
+      </div>
+    </div>
+  </div>
+
+  <div id="table-output-warning" class="warning" style="display:none">
+    This table will only be saved if you return <code style="font-family:ui-monospace,monospace;background:#fef3c7;padding:1px 4px;border-radius:3px;">$table</code> in your code above.
+  </div>
+
+  <div id="table-output-fields">
+    <div class="field" style="margin-top:8px;">
+      <div class="label">Table name <span style="color:#ef4444;font-size:10px;font-weight:700;">required</span></div>
+      <div class="combobox-wrap" id="table-name-wrap">
+        <input type="text" id="table-name" placeholder="e.g. Code Output" autocomplete="off">
+        <ul class="combobox-list" id="table-name-list"></ul>
+      </div>
+      <div id="table-name-error" class="error" style="display:none">Output table name is required before running</div>
+      <div class="hint">Type a new name or select from existing tables (case-insensitive)</div>
+    </div>
+
+    <div class="field">
+      <div class="label">If table exists <span style="color:#ef4444;font-size:10px;font-weight:700;">required</span></div>
+      <div class="radio-group">
+        <label class="radio-label">
+          <input type="radio" name="conflict-mode" value="overwrite" onchange="onConflictChange('overwrite')">
+          <span class="radio-text">Overwrite</span><span class="radio-sub">(replace all data)</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="conflict-mode" value="append" onchange="onConflictChange('append')">
+          <span class="radio-text">Append</span><span class="radio-sub">(add rows)</span>
+        </label>
+      </div>
+      <div id="conflict-mode-error" class="error" style="display:none">Select "Overwrite" or "Append" before running</div>
+    </div>
+    <div class="hint" style="margin-bottom:8px">Name this table to reference it in downstream nodes.</div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/javascript/javascript.min.js"></script>
+  <script>
+    var editor = null;
+    var manifest = {};
+    var allTables = [];
+    var sourceTables = [''];
+    var maxInputTables = 5;
+    var pauseForReview = true;
+    var examplesOpen = false;
+
+    var EXAMPLE_1 = [
+      '// =============================================',
+      '// EXAMPLE 1: Fetch Users from API',
+      '// Output: "Users Data" table',
+      '// =============================================',
+      '',
+      "const response = await fetch('https://fake-store-api.mock.beeceptor.com/api/users');",
+      'const users = await response.json();',
+      '',
+      'return {',
+      '  $table: {',
+      "    columns: ['user_id', 'username', 'email'],",
+      '    rows: users.map(u => ({',
+      '      user_id: u.user_id,',
+      '      username: u.username,',
+      '      email: u.email',
+      '    }))',
+      '  },',
+      '  $node_response: {',
+      "    status: 'ok',",
+      '    count: users.length',
+      '  }',
+      '};',
+    ].join('\n');
+
+    var EXAMPLE_2 = [
+      '// =============================================',
+      '// EXAMPLE 2: Create Order (no table output)',
+      '// Input: "Users Data" table',
+      '// Output: $node_response status only',
+      '// =============================================',
+      '',
+      "const users = $table('Users Data');",
+      "if (!users || users.rows.length === 0) {",
+      "  return { $node_response: { error: 'Users Data table is empty' } };",
+      '}',
+      'const userId = users.rows[0].user_id;',
+      '',
+      "const response = await fetch('https://fake-store-api.mock.beeceptor.com/api/orders', {",
+      "  method: 'PUT',",
+      '  headers: {',
+      "    'Content-Type': 'application/json'",
+      '  },',
+      '  body: JSON.stringify({',
+      '    user_id: userId,',
+      '    items: [{ product_id: 1, quantity: 2 }]',
+      '  })',
+      '});',
+      '',
+      'const result = await response.json();',
+      'return {',
+      '  $node_response: {',
+      "    status: 'ok',",
+      '    message: result.message,',
+      '    order_id: result.order_id',
+      '  }',
+      '};',
+    ].join('\n');
+
+    var EXAMPLE_3 = [
+      '// =============================================',
+      '// EXAMPLE 3: Fetch Orders from API',
+      '// Output: "Orders Data" table',
+      '// =============================================',
+      '',
+      "const response = await fetch('https://fake-store-api.mock.beeceptor.com/api/orders');",
+      'const orders = await response.json();',
+      '',
+      'return {',
+      '  $table: {',
+      "    columns: ['order_id', 'user_id', 'items', 'total_price', 'status'],",
+      '    rows: orders.map(o => ({',
+      '      order_id: o.order_id,',
+      '      user_id: o.user_id,',
+      '      items: JSON.stringify(o.items),',
+      '      total_price: o.total_price,',
+      '      status: o.status',
+      '    }))',
+      '  },',
+      '  $node_response: {',
+      "    status: 'ok',",
+      '    count: orders.length',
+      '  }',
+      '};',
+    ].join('\n');
+
+    var EXAMPLE_4 = [
+      '// =============================================',
+      '// EXAMPLE 4: Join Orders with Users',
+      '// Input: "Orders Data" + "Users Data" tables',
+      '// Output: "Orders with Users" table',
+      '// =============================================',
+      '',
+      "const orders = $table('Orders Data');",
+      "const users = $table('Users Data');",
+      'if (!orders || !users) {',
+      "  return { $node_response: { error: 'Missing tables' } };",
+      '}',
+      '',
+      'const userMap = new Map(users.rows.map(u => [u.user_id, u.username]));',
+      'const outputRows = orders.rows.map(order => ({',
+      '  order_id: order.order_id,',
+      '  user_id: order.user_id,',
+      '  username: userMap.get(order.user_id) || \'Unknown\',',
+      '  total_price: order.total_price,',
+      '  status: order.status',
+      '}));',
+      '',
+      'return {',
+      '  $table: {',
+      "    columns: ['order_id', 'user_id', 'username', 'total_price', 'status'],",
+      '    rows: outputRows',
+      '  },',
+      '  $node_response: {',
+      "    status: 'ok',",
+      '    joined: outputRows.length',
+      '  }',
+      '};',
+    ].join('\n');
+
+    var EXAMPLE_5 = [
+      '// =============================================',
+      '// EXAMPLE 5: Aggregate by Status',
+      '// Input: "Orders with Users" table',
+      '// Output: "Sales Summary" table',
+      '// =============================================',
+      '',
+      "const data = $table('Orders with Users');",
+      'if (!data) return { $node_response: { error: \'Orders with Users not found\' } };',
+      '',
+      'const summary = data.rows.reduce((acc, row) => {',
+      '  const status = row.status || \'Unknown\';',
+      '  acc[status] = acc[status] || { count: 0, total: 0 };',
+      '  acc[status].count++;',
+      '  acc[status].total += parseFloat(row.total_price) || 0;',
+      '  return acc;',
+      '}, {});',
+      '',
+      'const outputRows = Object.entries(summary).map(([status, vals]) => ({',
+      '  status,',
+      '  order_count: vals.count,',
+      '  total_sales: Math.round(vals.total * 100) / 100',
+      '}));',
+      '',
+      'return {',
+      '  $table: {',
+      "    columns: ['status', 'order_count', 'total_sales'],",
+      '    rows: outputRows',
+      '  },',
+      '  $node_response: {',
+      "    status: 'ok',",
+      '    categories: outputRows.length',
+      '  }',
+      '};',
+    ].join('\n');
+
+    // ── Table Source ──
+    function renderTableSource() {
+      var container = document.getElementById('table-source-container');
+      container.innerHTML = sourceTables.map(function(val, idx) {
+        var opts = '<option value="">(Optional) Select input table</option>' + allTables.map(function(t) {
+          return '<option value="' + t.replace(/"/g, '&quot;') + '"' + (t === val ? ' selected' : '') + '>' + t + '</option>';
+        }).join('');
+        var removeBtn = sourceTables.length > 1
+          ? '<button class="remove-btn" onclick="removeTableInput(' + idx + ')" title="Remove">✕</button>'
+          : '';
+        return '<div class="table-row"><select class="' + (val === '' ? 'empty-select' : '') + '" onchange="onSourceChange(' + idx + ', this.value)">' + opts + '</select>' + removeBtn + '</div>';
+      }).join('');
+
+      document.getElementById('add-input-btn').style.display = sourceTables.length < maxInputTables ? '' : 'none';
+    }
+
+    function onSourceChange(idx, val) {
+      sourceTables[idx] = val;
+      var selects = document.querySelectorAll('.table-row select');
+      if (selects[idx]) selects[idx].className = val === '' ? 'empty-select' : '';
+      if (editor) validateTableRefs(editor.getValue());
+      sendChange({ sourceTables: sourceTables.slice() });
+    }
+
+    function addTableInput() {
+      if (sourceTables.length >= maxInputTables) return;
+      sourceTables.push('');
+      renderTableSource();
+    }
+
+    function removeTableInput(idx) {
+      sourceTables.splice(idx, 1);
+      renderTableSource();
+      if (editor) validateTableRefs(editor.getValue());
+      sendChange({ sourceTables: sourceTables.slice() });
+    }
+
+    // ── Code editor ──
+    function initEditor(code) {
+      if (editor) {
+        editor.setValue(code);
+        return;
+      }
+      editor = CodeMirror(document.getElementById('editor-container'), {
+        value: code,
+        mode: 'javascript',
+        lineNumbers: true,
+        lineWrapping: true,
+        indentUnit: 2,
+        tabSize: 2,
+        extraKeys: { Tab: function(cm) { cm.replaceSelection('  '); } },
+      });
+      editor.on('change', function() {
+        var code = editor.getValue();
+        sendChange({ settings: { processing: { jsCode: code } } });
+        validateTableRefs(code);
+        updateTableOutputSection(code);
+      });
+    }
+
+    function validateTableRefs(code) {
+      if (!code || !code.trim()) {
+        document.getElementById('table-ref-errors').style.display = 'none';
+        return;
+      }
+      var refs = [];
+      var re = /\$table\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
+      var m;
+      while ((m = re.exec(code)) !== null) refs.push(m[1]);
+
+      // No $table() calls — clear any configured source tables
+      if (refs.length === 0 && sourceTables.some(function(t) { return t !== ''; })) {
+        sourceTables = [''];
+        renderTableSource();
+        sendChange({ sourceTables: [''] });
+      }
+
+      var unique = refs.filter(function(v, i, a) { return a.indexOf(v) === i; });
+      var configured = sourceTables.map(function(t) { return t.toLowerCase(); });
+      var errors = unique.filter(function(ref) {
+        return configured.indexOf(ref.toLowerCase()) === -1;
+      }).map(function(ref) {
+        return "$table('" + ref + "') requires \"" + ref + "\" to be added in Table Source above";
+      });
+      var el = document.getElementById('table-ref-errors');
+      if (errors.length > 0) {
+        el.innerHTML = errors.join('<br>');
+        el.style.display = '';
+      } else {
+        el.style.display = 'none';
+      }
+    }
+
+    function updateTableOutputSection(code) {
+      var hasTable = code && code.includes('$table:');
+      document.getElementById('table-output-warning').style.display = hasTable ? 'none' : '';
+      document.getElementById('table-output-fields').style.display = hasTable ? '' : 'none';
+      if (!hasTable) {
+        document.getElementById('table-name').value = '';
+        sendChange({ tableName: '' });
+      }
+    }
+
+    // ── Docs popup ──
+    function showDocs() {
+      document.getElementById('docs-modal').classList.add('open');
+    }
+
+    function closeDocs() {
+      document.getElementById('docs-modal').classList.remove('open');
+    }
+
+    function copyDocs() {
+      var codeEl = document.getElementById('docs-code-content');
+      var text = codeEl.textContent || codeEl.innerText;
+      navigator.clipboard.writeText(text).then(function() {
+        var btn = document.querySelector('.docs-copy-btn');
+        var label = document.getElementById('copy-label');
+        btn.classList.add('copied');
+        label.textContent = 'Copied!';
+        setTimeout(function() {
+          btn.classList.remove('copied');
+          label.textContent = 'Copy';
+        }, 2000);
+      });
+    }
+
+    function toggleExamples() {
+      examplesOpen = !examplesOpen;
+      document.getElementById('examples-arrow').textContent = examplesOpen ? '▲' : '▼';
+      document.getElementById('examples-list').className = 'examples-list' + (examplesOpen ? ' open' : '');
+    }
+
+    var EXAMPLE_CONFIGS = {
+      1: { code: EXAMPLE_1, sources: [], tableName: 'Users Data', conflictMode: 'overwrite', pauseForReview: true },
+      2: { code: EXAMPLE_2, sources: ['Users Data'], tableName: '', conflictMode: 'overwrite', pauseForReview: true, noTableOutput: true },
+      3: { code: EXAMPLE_3, sources: [], tableName: 'Orders Data', conflictMode: 'overwrite', pauseForReview: true },
+      4: { code: EXAMPLE_4, sources: ['Orders Data', 'Users Data'], tableName: 'Orders with Users', conflictMode: 'overwrite', pauseForReview: true },
+      5: { code: EXAMPLE_5, sources: ['Orders with Users'], tableName: 'Sales Summary', conflictMode: 'overwrite', pauseForReview: true }
+    };
+
+    function loadExample(num) {
+      if (!editor) return;
+      var cfg = EXAMPLE_CONFIGS[num];
+      if (!cfg) return;
+
+      editor.setValue(cfg.code);
+      sourceTables = cfg.sources.length > 0 ? cfg.sources.slice() : [''];
+      renderTableSource();
+      sendChange({ sourceTables: sourceTables.slice() });
+      sendChange({ settings: { processing: { jsCode: cfg.code } } });
+
+      document.getElementById('table-name').value = cfg.tableName;
+      sendChange({ tableName: cfg.tableName });
+
+      if (cfg.noTableOutput) {
+        document.querySelectorAll('[name="conflict-mode"]').forEach(function(r) { r.checked = false; });
+        updateTableOutputSection(cfg.code);
+      } else {
+        document.querySelector('[name="conflict-mode"][value="' + cfg.conflictMode + '"]').checked = true;
+        sendChange({ conflictMode: cfg.conflictMode });
+        document.getElementById('table-output-fields').style.display = '';
+      }
+
+      pauseForReview = cfg.pauseForReview;
+      document.getElementById('pause-review').checked = pauseForReview;
+      sendChange({ settings: { processing: { pauseForReview: pauseForReview } } });
+    }
+
+    function createSampleTables() {
+      var btn = document.getElementById('create-tables-btn');
+      var loading = document.getElementById('create-tables-loading');
+      btn.disabled = true;
+      btn.style.opacity = '0.6';
+      loading.style.display = 'inline-block';
+
+      var tables = [
+        {
+          name: 'Users Data',
+          columns: ['user_id', 'username', 'email'],
+          rows: [
+            [1, 'john_doe', 'john@example.com'],
+            [2, 'jane_smith', 'jane@example.com'],
+            [3, 'bob_johnson', 'bob@example.com'],
+            [4, 'susan_wilson', 'susan@example.com'],
+            [5, 'mike_anderson', 'mike@example.com']
+          ]
+        },
+        {
+          name: 'Orders Data',
+          columns: ['order_id', 'user_id', 'items', 'total_price', 'status'],
+          rows: [
+            [1, 1, '[{"product_id":1,"quantity":2}]', 849.97, 'Shipped'],
+            [2, 2, '[{"product_id":2,"quantity":1},{"product_id":7,"quantity":1}]', 1149.98, 'Delivered'],
+            [3, 3, '[{"product_id":4,"quantity":1},{"product_id":8,"quantity":1}]', 599.98, 'Processing'],
+            [4, 4, '[{"product_id":5,"quantity":1},{"product_id":10,"quantity":2}]', 1099.97, 'Shipped'],
+            [5, 5, '[{"product_id":6,"quantity":1},{"product_id":9,"quantity":1}]', 1399.98, 'Delivered']
+          ]
+        },
+        {
+          name: 'Orders with Users',
+          columns: ['order_id', 'user_id', 'username', 'total_price', 'status'],
+          rows: [
+            [1, 1, 'john_doe', 849.97, 'Shipped'],
+            [2, 2, 'jane_smith', 1149.98, 'Delivered'],
+            [3, 3, 'bob_johnson', 599.98, 'Processing'],
+            [4, 4, 'susan_wilson', 1099.97, 'Shipped'],
+            [5, 5, 'mike_anderson', 1399.98, 'Delivered']
+          ]
+        }
+      ];
+
+      window.parent.postMessage({ type: 'createSampleTables', tables: tables }, '*');
+    }
+
+    // ── Toggle ──
+    function onPauseChange(el) {
+      pauseForReview = el.checked;
+      sendChange({ settings: { processing: { pauseForReview: pauseForReview } } });
+    }
+
+    // ── Table Output ──
+    function onConflictChange(mode) {
+      document.getElementById('conflict-mode-error').style.display = 'none';
+      sendChange({ conflictMode: mode });
+    }
+
+    // ── Table Name Combobox ──
+    var comboOpen = false;
+
+    function comboOpen_() {
+      comboOpen = true;
+      window.parent.postMessage({ type: 'requestData', resource: 'tables', requestId: 'combo' }, '*');
+      comboRender(document.getElementById('table-name').value);
+      document.getElementById('table-name-list').classList.add('open');
+    }
+    function comboClose() {
+      if (!comboOpen) return;
+      comboOpen = false;
+      document.getElementById('table-name-list').classList.remove('open');
+    }
+    function comboRender(filter) {
+      var list = document.getElementById('table-name-list');
+      var lower = (filter || '').toLowerCase().trim();
+      var filtered = lower ? allTables.filter(function(t) { return t.toLowerCase().indexOf(lower) !== -1; }) : allTables;
+      var trimmed = (filter || '').trim();
+      var exactMatch = trimmed && allTables.some(function(t) { return t.toLowerCase() === trimmed.toLowerCase(); });
+      var html = '';
+      if (trimmed && !exactMatch) {
+        var s = trimmed.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+        html += '<li class="add-new" data-value="' + s + '">+ Add &ldquo;' + s + '&rdquo;</li>';
+      }
+      if (filtered.length > 0) {
+        html += filtered.map(function(t) {
+            var safe = t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+            return '<li data-value="' + safe + '"><span>' + safe + '</span>'
+              + '<button class="combo-delete" data-value="' + safe + '" tabindex="-1" title="Delete table">'
+              + '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+              + '<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>'
+              + '</svg></button></li>';
+          }).join('');
+      } else if (!trimmed) {
+        html = '<li class="empty">No existing tables</li>';
+      }
+      list.innerHTML = html;
+    }
+    function comboSelect(val) {
+      document.getElementById('table-name').value = val;
+      document.getElementById('table-name-error').style.display = val ? 'none' : '';
+      sendChange({ tableName: val });
+      comboClose();
+    }
+
+    document.getElementById('table-name').addEventListener('focus', function() { comboOpen_(); });
+    document.getElementById('table-name').addEventListener('input', function(e) {
+      if (!comboOpen) comboOpen_();
+      comboRender(e.target.value);
+    });
+    document.getElementById('table-name').addEventListener('blur', function() {
+      setTimeout(function() {
+        if (!comboOpen) return;
+        var val = document.getElementById('table-name').value.trim();
+        document.getElementById('table-name-error').style.display = !val ? '' : 'none';
+        sendChange({ tableName: val });
+        comboClose();
+      }, 150);
+    });
+    document.getElementById('table-name-list').addEventListener('mousedown', function(e) {
+      var btn = e.target.closest('.combo-delete');
+      if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.parent.postMessage({ type: 'deleteTable', tableName: btn.dataset.value }, '*');
+        return;
+      }
+      var li = e.target.closest('li');
+      if (!li || li.classList.contains('empty')) return;
+      e.preventDefault();
+      comboSelect(li.dataset.value);
+    });
+    document.addEventListener('click', function(e) {
+      if (!comboOpen) return;
+      if (!document.getElementById('table-name-wrap').contains(e.target)) {
+        var val = document.getElementById('table-name').value.trim();
+        document.getElementById('table-name-error').style.display = !val ? '' : 'none';
+        sendChange({ tableName: val });
+        comboClose();
+      }
+    });
+
+    // ── Init / StateUpdate ──
+    function applyState(data, isInit) {
+      if (isInit) {
+        manifest = data.manifest || {};
+        maxInputTables = manifest.max_input_tables || 5;
+      }
+
+      // Source tables
+      var incoming = data.sourceTables || [];
+      allTables = data.allTables || [];
+      var tableNames = allTables.map(function(t) { return t.name || t; });
+      var corrected = incoming.map(function(t) { return t && tableNames.indexOf(t) !== -1 ? t : ''; });
+      var hadStale = corrected.some(function(t, i) { return t !== (incoming[i] || ''); });
+      sourceTables = corrected.length > 0 ? corrected : [''];
+      if (hadStale) {
+        sendChange({ sourceTables: sourceTables.slice() });
+      }
+      renderTableSource();
+
+      // Code
+      var jsCode = (data.settings && data.settings.processing && data.settings.processing.jsCode) || '';
+      if (isInit) {
+        initEditor(jsCode);
+      } else if (editor && !editor.hasFocus()) {
+        editor.setValue(jsCode);
+      }
+      validateTableRefs(jsCode);
+      updateTableOutputSection(jsCode);
+
+      // Pause
+      var p = (data.settings || {}).processing || {};
+      pauseForReview = p.pauseForReview !== false;
+      document.getElementById('pause-review').checked = pauseForReview;
+
+      // Table name
+      var tableNameEl = document.getElementById('table-name');
+      if (isInit || (document.activeElement !== tableNameEl && !comboOpen)) {
+        tableNameEl.value = data.tableName || '';
+        document.getElementById('table-name-error').style.display = !data.tableName ? '' : 'none';
+      }
+
+      // Conflict mode
+      if (data.conflictMode) {
+        document.querySelectorAll('[name="conflict-mode"]').forEach(function(r) {
+          r.checked = r.value === data.conflictMode;
+        });
+        document.getElementById('conflict-mode-error').style.display = 'none';
+      }
+    }
+
+    window.addEventListener('message', function(e) {
+      if (e.data.type === 'init') { currentNodeId = e.data.nodeId; applyState(e.data, true); notifyResize(); }
+      if (e.data.type === 'stateUpdate') { applyState(e.data, false); notifyResize(); }
+      if (e.data.type === 'dataResponse' && e.data.resource === 'tables') {
+        allTables = e.data.data || [];
+        renderTableSource();
+        if (comboOpen) { comboRender(document.getElementById('table-name').value); }
+      }
+      if (e.data.type === 'tablesCreated') {
+        var btn = document.getElementById('create-tables-btn');
+        var loading = document.getElementById('create-tables-loading');
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        loading.style.display = 'none';
+        alert('Sample tables created! Refresh the page to see them in Table Source dropdowns.');
+      }
+      if (e.data.type === 'tablesCreateFailed') {
+        var btn = document.getElementById('create-tables-btn');
+        var loading = document.getElementById('create-tables-loading');
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        loading.style.display = 'none';
+      }
+    });
+
+    var currentNodeId = null;
+    function sendChange(patch) {
+      window.parent.postMessage({ type: 'settingsChange', patch: Object.assign({ nodeId: currentNodeId }, patch) }, '*');
+    }
+
+    notifyResize.lastHeight = 0;
+    function notifyResize() {
+      var h = document.body.offsetHeight;
+      if (h === notifyResize.lastHeight) return;
+      notifyResize.lastHeight = h;
+      window.parent.postMessage({ type: 'resize', height: h }, '*');
+    }
+
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(notifyResize).observe(document.body);
+    }
+    notifyResize();
+  </script>
+</body>
+</html>

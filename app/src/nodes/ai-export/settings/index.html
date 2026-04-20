@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; padding: 20px 20px 8px 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; color: #374151; }
+
+
+    /* Section bars */
+    .section-bar { font-size: 11px; font-weight: 700; color: #111; letter-spacing: 0.3px; padding: 8px 12px; margin: 24px -20px 12px -20px; background: #f8f8f8; border-top: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; gap: 6px; }
+    .section-bar.first { margin-top: 12px; }
+    .section-bar.green  { border-left: 3px solid #22c55e; }
+    .section-bar.orange { border-left: 3px solid #f59e0b; }
+
+    /* Fields */
+    .field { margin-bottom: 12px; }
+    .label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+    .required { color: #ef4444; font-size: 10px; font-weight: 700; }
+    select, input[type="text"], textarea { width: 100%; padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 13px; font-family: inherit; background: white; color: #374151; outline: none; }
+    select:focus, input[type="text"]:focus, textarea:focus { border-color: #6b7280; }
+    textarea { resize: vertical; min-height: 120px; max-height: 500px; overflow-y: auto; line-height: 1.5; }
+    .hint { font-size: 11px; color: #9ca3af; margin-top: 4px; line-height: 1.5; }
+    .error { font-size: 11px; color: #ef4444; margin-top: 4px; }
+    .suffix-wrap { position: relative; }
+    .suffix-wrap input { padding-right: 46px; }
+    .suffix { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; color: #9ca3af; pointer-events: none; user-select: none; }
+
+    /* Table Source */
+    .table-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .table-row select { flex: 1; }
+
+    /* Toggle */
+    .toggle-row { display: flex; align-items: center; gap: 6px; margin-top: 12px; cursor: pointer; }
+    .toggle-label { font-size: 12px; color: #374151; }
+  </style>
+</head>
+<body>
+
+
+  <!-- TABLE SOURCE (required, single) -->
+  <div class="section-bar green first">📊 Table Source</div>
+  <div class="field">
+    <div class="label">Input table <span class="required">required</span></div>
+    <select id="source-table" onchange="onSourceChange(this.value)">
+      <option value="">-- Select table --</option>
+    </select>
+    <div id="source-error" class="error" style="display:none">Select an input table before running</div>
+  </div>
+
+  <!-- USER FORM -->
+  <div class="section-bar orange">📁 User Form</div>
+
+  <div class="field">
+    <div class="label">Output Format</div>
+    <select id="output-format" onchange="onFormatChange(this.value)">
+      <option value="json">JSON</option>
+      <option value="xml">XML</option>
+    </select>
+  </div>
+
+  <div class="field" style="margin-top: 12px;">
+    <div class="label"><span id="prompt-label">Export Prompt</span> <span class="required">required</span></div>
+    <textarea id="prompt" placeholder="e.g. Export as nested JSON with 'records' as root array"></textarea>
+    <div id="prompt-error" class="error" style="display:none">A prompt is required before running.</div>
+  </div>
+
+  <div class="field" style="margin-top: 4px;">
+    <div class="label">File name <span class="required">required</span></div>
+    <div class="suffix-wrap">
+      <input type="text" id="filename" placeholder="e.g. output">
+      <span class="suffix" id="ext-label">.json</span>
+    </div>
+    <div id="filename-error" class="error" style="display:none">File name is required before running.</div>
+  </div>
+
+  <div class="label" style="margin-top: 24px;">Pause after step run</div>
+  <label class="toggle-row">
+    <input type="checkbox" id="pause-review" checked onchange="onPauseChange(this)">
+    <span id="pause-label" class="toggle-label">Pause to review result before running the next step</span>
+  </label>
+  <div class="hint">When enabled, pauses after this step to allow review before continuing to the next step.</div>
+
+  <script>
+    var manifest = {};
+    var allTables = [];
+    var sourceTable = '';
+    var outputFormat = 'json';
+    var pauseForReview = true;
+    var defaultJsonPrompt = '';
+    var defaultXmlPrompt = '';
+    var formatOptions = [{ value: 'json', label: 'JSON' }, { value: 'xml', label: 'XML' }];
+
+
+
+    // ── Table Source ──
+    function renderSourceTable() {
+      var sel = document.getElementById('source-table');
+      sel.innerHTML = '<option value="">-- Select table --</option>' + allTables.map(function(t) {
+        return '<option value="' + t.replace(/"/g, '&quot;') + '"' + (t === sourceTable ? ' selected' : '') + '>' + t + '</option>';
+      }).join('');
+      document.getElementById('source-error').style.display = !sourceTable ? '' : 'none';
+    }
+
+    function onSourceChange(val) {
+      sourceTable = val;
+      document.getElementById('source-error').style.display = !val ? '' : 'none';
+      sendChange({ sourceTables: [val] });
+    }
+
+    // ── Format ──
+    function onFormatChange(newFormat) {
+      var newExt = newFormat === 'xml' ? '.xml' : '.json';
+      var currentBase = document.getElementById('filename').value.replace(/\.[^.]+$/, '');
+      var newFileName = currentBase ? currentBase + newExt : '';
+
+      var currentDefaultPrompt = outputFormat === 'xml' ? defaultXmlPrompt : defaultJsonPrompt;
+      var newDefaultPrompt = newFormat === 'xml' ? defaultXmlPrompt : defaultJsonPrompt;
+      var currentPrompt = document.getElementById('prompt').value;
+      var isUsingDefault = (currentPrompt === currentDefaultPrompt || currentPrompt === '');
+
+      outputFormat = newFormat;
+      document.getElementById('ext-label').textContent = newExt;
+
+      var patch = { settings: { processing: { outputFormat: newFormat } } };
+      if (newFileName) patch.settings.processing.file_name = newFileName;
+      if (isUsingDefault && newDefaultPrompt) {
+        document.getElementById('prompt').value = newDefaultPrompt;
+        patch.prompt = newDefaultPrompt;
+      }
+      sendChange(patch);
+    }
+
+    function updateExtLabel() {
+      document.getElementById('ext-label').textContent = outputFormat === 'xml' ? '.xml' : '.json';
+    }
+
+    document.getElementById('prompt').addEventListener('blur', function(e) {
+      var val = e.target.value;
+      document.getElementById('prompt-error').style.display = (!val || !val.trim()) ? '' : 'none';
+      sendChange({ prompt: val });
+    });
+    document.getElementById('prompt').addEventListener('input', function(e) {
+      document.getElementById('prompt-error').style.display = (!e.target.value || !e.target.value.trim()) ? '' : 'none';
+    });
+
+    document.getElementById('filename').addEventListener('blur', function(e) {
+      var base = e.target.value.replace(/\.[^.]+$/, '').trim();
+      var ext = outputFormat === 'xml' ? '.xml' : '.json';
+      var stored = base ? base + ext : '';
+      document.getElementById('filename-error').style.display = !stored ? '' : 'none';
+      sendChange({ settings: { processing: { file_name: stored } } });
+    });
+
+    function onPauseChange(el) {
+      pauseForReview = el.checked;
+      sendChange({ settings: { processing: { pauseForReview: pauseForReview } } });
+    }
+
+    // ── Init / StateUpdate ──
+    function applyState(data, isInit) {
+      if (isInit) {
+        manifest = data.manifest || {};
+
+        var ui = manifest.ui || {};
+        var defaults = manifest.defaults || {};
+        if (ui.output_format_options) formatOptions = ui.output_format_options;
+        if (ui.prompt_label) document.getElementById('prompt-label').textContent = ui.prompt_label;
+        if (ui.prompt_placeholder) document.getElementById('prompt').placeholder = ui.prompt_placeholder;
+        defaultJsonPrompt = ui.default_prompt_json || '';
+        defaultXmlPrompt = ui.default_prompt_xml || '';
+
+        var formatSelect = document.getElementById('output-format');
+        formatSelect.innerHTML = formatOptions.map(function(o) {
+          return '<option value="' + o.value + '">' + o.label + '</option>';
+        }).join('');
+
+        var s = data.settings || {};
+        var p = s.processing || {};
+        outputFormat = p.outputFormat || (defaults.output_format) || 'json';
+        formatSelect.value = outputFormat;
+        updateExtLabel();
+
+        var fileName = p.file_name || '';
+        var baseName = fileName.replace(/\.[^.]+$/, '');
+        document.getElementById('filename').value = baseName;
+        document.getElementById('filename-error').style.display = !fileName ? '' : 'none';
+      }
+
+      // Source table
+      allTables = data.allTables || [];
+      sourceTable = data.sourceTables && data.sourceTables[0] ? data.sourceTables[0] : (data.sourceTable || '');
+      renderSourceTable();
+
+      // Prompt
+      var promptEl = document.getElementById('prompt');
+      if (isInit || document.activeElement !== promptEl) {
+        promptEl.value = data.prompt || '';
+        document.getElementById('prompt-error').style.display = (!data.prompt || !data.prompt.trim()) ? '' : 'none';
+      }
+
+      // Pause
+      var p2 = (data.settings || {}).processing || {};
+      pauseForReview = p2.pauseForReview !== false;
+      document.getElementById('pause-review').checked = pauseForReview;
+    }
+
+    window.addEventListener('message', function(e) {
+      if (e.data.type === 'init') { currentNodeId = e.data.nodeId; applyState(e.data, true); notifyResize(); }
+      if (e.data.type === 'stateUpdate') { applyState(e.data, false); notifyResize(); }
+      if (e.data.type === 'dataResponse' && e.data.resource === 'tables') {
+        allTables = e.data.data || [];
+        renderSourceTable();
+      }
+    });
+
+    var currentNodeId = null;
+    function sendChange(patch) {
+      window.parent.postMessage({ type: 'settingsChange', patch: Object.assign({ nodeId: currentNodeId }, patch) }, '*');
+    }
+
+    notifyResize.lastHeight = 0;
+    function notifyResize() {
+      var h = document.body.offsetHeight;
+      if (h === notifyResize.lastHeight) return;
+      notifyResize.lastHeight = h;
+      window.parent.postMessage({ type: 'resize', height: h }, '*');
+    }
+
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(notifyResize).observe(document.body);
+    }
+    notifyResize();
+  </script>
+</body>
+</html>
